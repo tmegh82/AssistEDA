@@ -1,0 +1,759 @@
+---
+title: "Report"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output:
+  html_document:
+    fig_width: 6 
+    fig_height: 4 
+    df_print: paged
+    keep_md: true
+  pdf_document: default
+
+params:
+  d: "C:/Users/Meghana/Desktop/Exploratory Analysis/SampleWithShiny/R/iris.csv"
+  freq_param: "None"
+  qq_param: "None"
+  skew_param: "None"
+  violin_param: "None"
+  bar_param: "SepalLengthCm"
+  target1_param: "SepalLengthCm"
+  target2_param: "PetalLengthCm"
+  target_factor_param: "Species"
+  tsne_param: "Species"
+  tsne_perplexity: "30"
+  collinearity_param: "PetalLengthCm"
+---
+<div style="margin-bottom:100px;">
+
+```{r setup, echo = FALSE}
+  library(ggplot2)
+  library(knitr)
+  library(plotly)
+  library(Cairo)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<div style="margin-bottom:100px;">
+subtitle: <h1><u>Input Dataset</u></h1>
+$~$
+$~$
+```{r, echo = FALSE}
+library(knitr)
+library(kableExtra)
+input_data = read.csv(params$d)
+c  = treating_mis_values(input_data)
+kable(input_data, caption = "Input Dataset")%>%
+  kable_styling(fixed_thead = T, bootstrap_options = c("striped", "hover","condensed", "responsive"))%>% scroll_box(height = "400px", width = "100%")
+```
+
+$~$
+$~$
+<div style="margin-bottom:100px;">
+<h1><u>Attributes</u></h1>
+```{r,echo=FALSE}
+library(knitr)
+library(kableExtra)
+table1 = variable_types(c)
+kable(table1)%>%
+  kable_styling(fixed_thead = T, bootstrap_options = c("striped", "hover", "condensed", "responsive"))%>% scroll_box(height = "300px", width = "100%")
+
+```
+
+$~$
+$~$
+<h1><u>Numerical Attributes</u></h1>
+```{r, echo=FALSE,  results='asis', fig.keep='all', message = FALSE, warning = FALSE}
+library(knitr)
+library(kableExtra)
+table2 = num_properties_mydata_pdf(c)
+
+kable(table2)%>%
+kable_styling(fixed_thead = T, bootstrap_options = c("striped", "hover", "condensed", "responsive"))%>% scroll_box(height = "300px", width = "100%") 
+
+n<-nrow(table2)
+str_vec <- vector()
+#mean and median Inferences
+HTML("<b> Inferences based on Mean and Median</b></br>")
+for(i in 1:n)
+{
+  x<-as.numeric(as.character(table2$Median[i]))
+  y<-as.numeric(as.character(table2$Mean[i]))
+
+  if(x < y)
+  {
+    current_str <- paste("The feature <b>",table2$Column[i]," </b> might have the outliers in the high end of the distribution",sep = "")
+  }
+  
+  else if(x > y)
+  {
+    current_str <- paste("The feature <b>",table2$Column[i],"</b> might have the outliers in the low end of the distribution",sep="")
+  }
+
+  else
+  {
+    current_str <- paste("The feature  <b>",table2$Column[i],"</b> might not contain the outliers",sep = "")
+  }
+  str_vec <- c(str_vec, current_str)
+}
+      HTML(paste(str_vec, collapse = '<br/>'))
+      HTML("</br>")
+      
+      
+#SD Inferences      
+x<-as.numeric(rownames(table2[which.max(table2$Sd),]))
+f<-table2$Column[[x]]
+HTML("<b> </br>Inferences based on Standard deviation and Variance</b></br>")
+HTML(paste("The feature <b>",f," </b> spread is more.Beware of this feature if it is supposed to be restricted</br>"))
+
+HTML("<b></br>Missing Data</b></br>")
+str_vec <- vector()
+for(i in 1:n){
+ x<-as.numeric(as.character(table2$Num_missing_val[i]))
+ 
+if(x == 0)
+{
+current_str <- paste("The feature <b>",table2$Column[i]," </b> does not have any missing values",sep = "")
+ }
+
+  else if(x > 0)
+  {
+      #should check if the missing values are dominating or not
+      F<-as.character(table2$Column[i])
+       ds<-c
+      y<-round(0.05*nrow(ds))
+      
+      if(x<y)
+       {
+        current_str <- paste("The feature <b>",table2$Column[i],"</b> has missing values.These data points can be omitted from analysis",sep="")
+        }
+      
+      else
+      {
+       current_str <- paste("The feature <b>",table2$Column[i],"</b> has more missing values.These values should be treated",sep="")
+       }
+  }
+         
+  str_vec <- c(str_vec, current_str)
+  #print(paste("str_vec =", str_vec))
+  }
+  HTML(paste(str_vec, collapse = '<br/>'))
+  
+  HTML("</br")
+  HTML("</br>")
+  HTML("</br>")
+  cat("\n")
+#Se Infer  
+
+str_vec <- vector()
+HTML("<b></br>Sample Estimates</b></br>")
+
+for(i in 1:n)
+  {
+    x<-as.numeric(as.character(table2$Se[i]))
+    y<-as.numeric(as.character(table2$Mean[i]))
+    z<-y/3
+  
+    if(x>z)#se is high
+    {
+      current_str <- paste("The sample for the feature <b>", table2$Column[i]," </b> is not a proper represenative of the population",sep = "")
+    }
+    
+    else
+    {
+      current_str <- paste("The sample for the feature <b>", table2$Column[i]," </b> is  a proper represenative of the population",sep = "")
+    }
+       
+    str_vec <- c(str_vec, current_str)
+    #print(paste("str_vec =", str_vec))
+    
+  }
+      HTML(paste(str_vec, collapse = '<br/>'))
+      HTML("</br>")
+
+#Skew Inferences
+HTML("<b></br>Shape Estimates</b></br>")
+      str_vec <- vector()
+      for(i in 1:n)
+      {
+        x<-as.numeric(as.character(table2$skewness[i]))
+        y<-round(as.numeric(as.character(table2$kurtosis[i])),1)
+        #print(x)
+        if(x< -1 || x>1)
+        {
+          #highly skewed
+          if(y>0)#longer tails - excess outliers
+          {
+            current_str <- paste("The feature <b>",table2$Column[i]," </b>highly deviates from normal distribution.Outliers are suspected",sep = "")
+          }
+          else if(y<0)#shorter tails
+          {
+          current_str <- paste("The feature <b>",table2$Column[i]," </b>highly deviates from normal distribution.Also check for any data entry errors",sep = "")
+          }
+        }
+        else if((-1<x && x< -0.5) || (0.5<x && x<1) )
+        {
+          #moderately skewed
+          if(y>0)
+          {
+            current_str <- paste("The feature <b>",table2$Column[i]," </b>slightly deviates from normal distribution.Outliers are suspected.",sep = "")
+          }
+          else if(y<0)
+          {
+          current_str <- paste("The feature <b>",table2$Column[i],"</b> slightly deviates from the normal distribution.Kindly check for the data entry errors",sep="")
+          }
+        }
+         
+       else if(-0.5<x && x<0.5)
+          {
+           if(y==0)
+           {
+            current_str <- paste("The feature <b>",table2$Column[i],"</b> is symmetric.",sep="")
+           }
+           else
+           {
+             current_str <- paste("The feature <b>",table2$Column[i]," </b>is almost symmetric.",sep = "")
+           }
+          }
+        str_vec <- c(str_vec, current_str)
+        #print(paste("str_vec =", str_vec))
+      }
+      HTML(paste(str_vec, collapse = '<br/>'))
+   
+```
+
+$~$
+$~$
+<h1><u>Categorical Attributes</u></h1>
+```{r, echo=FALSE, results='asis', fig.keep='all', message = FALSE, warning = FALSE}
+library(knitr)
+library(kableExtra)
+library(xml2)
+table3 = cat_properties_mydata_pdf(c)
+
+kable(table3)%>%
+kable_styling(fixed_thead = T, bootstrap_options = c("striped", "hover", "condensed", "responsive"))%>% scroll_box(height = "300px", width = "100%")
+
+n<-nrow(table3)
+ds<-c
+str_vec <- vector()
+HTML(paste("<b> Inferences based on Mode </b></br>"))
+
+        str_vec <- vector()
+
+        for(i in 1:n){
+          f<-as.character(table3$Column[i])
+           nl<-nlevels(ds[[f]])
+           l<-levels(ds[[f]])
+           
+           s<-paste(l,collapse = ", ")
+         
+           current_str<-paste("The feature has <b>",nl," </b> levels.And they are <b>
+                              ",s,"</b>")
+           
+           #trying to find the dominating level
+           dl <- ds%>%group_by_at(f)%>%summarise(count=n())
+           z  <-dl[dl$count==max(dl$count),f]
+           r<-paste(z[[f]],collapse = " , ")
+           current_str<-paste0(current_str,"</br>The levels <b> ",r," </b> have dominant values </br>")
+           str_vec <- c(str_vec, current_str)
+          #print(paste("str_vec =", str_vec))
+        }
+       
+        HTML(paste(str_vec, collapse = '<br/>'))
+
+```
+
+$~$
+$~$
+<h1><u>Histogram Plots</u></h1>
+```{r, echo=FALSE,  results='asis', fig.keep='all', message = FALSE, warning = FALSE}
+library(knitr)
+library(plotly)
+total_len = length(names(Filter(is.numeric, c))) + length(names(Filter(is.logical, c)))
+contin_col_names = names(Filter(is.numeric, c))
+contin_col_names = c(contin_col_names, names(Filter(is.logical, c)))
+contin_cols = which(names(c) %in% contin_col_names)
+output_freq = list()
+
+for(i in 1:total_len)
+{
+  p = contin_cols[i]
+  
+  if(params$freq_param=="None")
+    bp = plot_ly(x = c[[p]], type = "histogram") %>%  layout(xaxis = list(title = names(c)[p], zeroline = FALSE),yaxis = list(title = "Count", zeroline = FALSE))
+  
+  
+  if(params$freq_param!="None")
+    bp = plot_ly(c, x = c[[p]], color = ~get(params$freq_param)) %>% add_histogram() %>% layout(xaxis = list(title = names(c)[p]))
+  
+   output_freq[[length(output_freq) + 1L]] <- bp
+
+}
+
+for(j in 1:length(output_freq)){
+  x <- output_freq[[j]]
+
+  if(inherits(x, "character")){
+    cat("\n")
+    cat(x)
+  } else if(inherits(x, "knitr_kable")){
+    cat("\n")
+    print(x)
+  }
+  else {
+    # print the html piece of the htmlwidgets
+    cat("\n")
+    cat(htmltools::renderTags(as.widget(x))$html)
+  }
+}
+
+```
+
+$~$
+$~$
+<h1><u>QQ Plots</u></h1>
+```{r, echo=FALSE,  results='asis', fig.keep='all', message = FALSE, warning = FALSE}
+library(knitr)
+library(plotly)
+library(ggplot2)
+total_len = length(names(Filter(is.numeric, c))) + length(names(Filter(is.logical, c)))
+contin_col_names = names(Filter(is.numeric, c))
+contin_col_names = c(contin_col_names, names(Filter(is.logical, c)))
+contin_cols = which(names(c) %in% contin_col_names)
+output_qq = list()
+ds = c
+for(i in 1:total_len)
+{
+  p = contin_cols[i]
+  z = as.character(params$qq_param)
+  
+  if(z=="None")
+  {
+    gg <- ggplot(ds, aes(sample = ds[[p]])) + stat_qq() + stat_qq_line()+ggtitle(label = paste("QQ Plot for", names(ds)[p]))
+    bp <- ggplotly(gg)
+cat(knit_print(bp))    
+    }
+
+  else
+  {
+    #bp<-ggplot(ds, aes(sample = ds[[p]])) + stat_qq() + stat_qq_line()+ggtitle(label = paste("QQ Plot for", names(ds)[p]))
+    bp<-ggqqplot(ds, x =names(ds[p]) ,color = z, ggtheme = theme_pubclean(), title = label("QQ Plot for", names(ds)[p]))
+              bp<-ggplotly(bp)
+    cat(knit_print(bp))
+    
+  }
+   output_qq[[length(output_qq) + 1L]] <- bp
+
+}
+
+# for(j in 1:length(output_qq)){
+#   x <- output_qq[[j]]
+#   print(output_qq[[p]])
+#   cat("\n")
+# }
+```
+
+$~$
+$~$
+<h1><u>Density Plots</u></h1>
+```{r, echo=FALSE,  results='asis', fig.keep='all', message = FALSE, warning = FALSE}
+library(knitr)
+library(plotly)
+library(rmarkdown)
+library(shinyWidgets)
+library(ggplot2)
+library(irlba)
+library(plot3D)
+library(dplyr)
+# total_len = length(names(Filter(is.numeric, c))) + length(names(Filter(is.logical, c)))
+# contin_col_names = names(Filter(is.numeric, c))
+# contin_col_names = c(contin_col_names, names(Filter(is.logical, c)))
+# contin_cols = which(names(c) %in% contin_col_names)
+output_skew = list()
+print(total_len)
+for(i in 1:total_len)
+{
+  p = contin_cols[i]
+  
+  if(params$skew_param=="None")
+  {
+      density = density(c[[p]])
+      bp <- plot_ly(x = ~density$x, y = ~density$y, type = 'scatter', mode = 'lines', fill = 'tozeroy') %>% layout(xaxis = list(title = names(c)[p]),yaxis = list(title = 'Density'))
+      cat(knit_print(bp))
+          }
+
+  if(params$skew_param!="None")
+  {
+    z = as.character(params$skew_param)
+         gg = ggplot(c, aes_string(x = names(c)[p], colour = z)) + geom_density() + geom_rug()
+      bp = ggplotly(gg)
+      cat(knit_print(bp))
+      
+  }
+  
+   output_skew[[length(output_skew) + 1L]] <- bp
+
+}
+
+
+```
+
+
+$~$
+$~$
+<h1><u>Violin Plots</u></h1>
+```{r, echo=FALSE,  results='asis', fig.keep='all', message = FALSE, warning = FALSE}
+library(knitr)
+library(plotly)
+
+total_len = length(names(Filter(is.numeric, c))) + length(names(Filter(is.logical, c)))
+contin_col_names = names(Filter(is.numeric, c))
+contin_col_names = c(contin_col_names, names(Filter(is.logical, c)))
+contin_cols = which(names(c) %in% contin_col_names)
+output_violin = list()
+
+for(i in 1:total_len)
+{
+  p = contin_cols[i]
+  
+  if(params$violin_param=="None")
+  {
+
+    bp <- plot_ly( y = c[[p]], type = 'violin', box = list(visible = T), meanline = list(visible = T), x0 = names(c)[p]) %>% layout(yaxis = list(title = "", zeroline = F))
+    cat(knit_print(bp))
+          }
+
+  if(params$violin_param!="None")
+  {
+    z1 = as.character(params$violin_param)
+    fig <- c %>% plot_ly( x = ~get(params$violin_param), y = ~get(names(c)[p]), split = ~get(params$violin_param), type = 'violin', box = list(visible = T),meanline = list(visible = T))
+   bp <- fig %>% layout(xaxis = list(title = z1), yaxis = list(title = names(c)[p], zeroline = F))
+   cat(knit_print(bp))
+      
+  }
+  
+   output_violin[[length(output_violin) + 1L]] <- bp
+
+}
+
+
+```
+
+
+$~$
+$~$
+<h1><u>Bar Plots</u></h1>
+```{r, echo=FALSE,  results='asis', fig.keep='all', message = FALSE, warning =FALSE}
+library(knitr)
+ library(plotly)
+ library(rmarkdown)
+ library(shinyWidgets)
+ library(Rtsne)
+ library(ggplot2)
+ library(irlba)
+ library(plot3D)
+ library(ggcorrplot)
+ library(dplyr)
+ output_bar = list()
+ z1 = as.character(params$bar_param)
+ l = names(Filter(is.factor, c))
+ l = c(l, names(Filter(is.character, c)))
+ print(params$bar_param)
+ for(i in 1:length(l))
+ {
+   if(params$bar_param=="None")
+   {
+              df2 = c
+              z = l[i]
+              no = match(z,names(df2))
+              df2 <- df2  %>% group_by_(names(.)[no])
+              df2 <- df2 %>% dplyr::summarise(count = n())
+              fig <- df2 %>% plot_ly(labels = ~get(l[i]) , values = ~count)
+              fig <- fig %>% add_pie(hole = 0.6)
+              bp <- fig %>% layout(title = paste0(z),  showlegend = T, xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE), yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+             cat(knit_print(bp))
+              
+              }
+   if(params$bar_param!="None")
+   {
+     q = as.character(params$bar_param)
+     print(q)
+     gg = ggplot(c) +  geom_bar(aes_string(x = l[i], fill = factor(c[[z1]])))+xlab(z1)
+     bp = ggplotly(gg)
+     cat(knit_print(bp))
+   }
+    output_bar[[length(output_bar) + 1L]] <- bp
+ }
+ 
+```
+
+
+
+$~$
+$~$
+<h1><u>Outliers</u></h1>
+```{r, echo=FALSE}
+outlier_table = outlier_detection_chebesheys(c)
+kable(outlier_table)%>%
+kable_styling(fixed_thead = T, bootstrap_options = c("striped", "hover", "condensed", "responsive"))%>% scroll_box(height = "300px", width = "100%") 
+
+```
+
+$~$
+$~$
+<h1><u>Data Distribution</u></h1>
+```{r, echo=FALSE}
+dist_table = distribution(c)
+kable(dist_table)%>%
+kable_styling(fixed_thead = T, bootstrap_options = c("striped", "hover", "condensed", "responsive"))%>% scroll_box(height = "300px", width = "100%") 
+
+```
+
+
+$~$
+$~$
+<h1><u>Correlation</u></h1>
+<h3><u>Correlation Table</u></h3>
+```{r, echo=FALSE,  results='asis', fig.keep='all', message = FALSE, warning = FALSE}
+corr_tables = correlation(c)
+  z = as.data.frame(corr_tables[[1]])
+  kable(z)%>%kable_styling(fixed_thead = T, bootstrap_options = c("striped", "hover", "condensed", "responsive"))%>% scroll_box(height = "300px", width = "100%") 
+```
+
+
+$~$
+$~$
+<h3><u>P-Value Table</u></h3>
+```{r, echo=FALSE, results='asis', fig.keep='all', message = FALSE, warning = FALSE}
+  if(!require(DescTools)){install.packages("Hmisc")}
+library("Hmisc")
+z = as.data.frame(corr_tables[[2]])
+  kable(z)%>%kable_styling(fixed_thead = T, bootstrap_options = c("striped", "hover", "condensed", "responsive"))%>% scroll_box(height = "300px", width = "100%") 
+  
+      t1<-as.data.frame(corr_tables[1])#corr values
+      t2<-as.data.frame(corr_tables[2])#p values
+      t11<-as.matrix(t1)
+      t22<-as.matrix(t2)
+      diag(t11)=NA
+      diag(t22)=NA
+      t11<-melt(t11,na.rm=TRUE)
+      t22<-melt(t22,na.rm=TRUE)
+      t11<-distinct(t11,value,.keep_all = TRUE)
+      attach(t11)
+      t11<-t11[order(-value),]
+      rownames(t11)<-NULL
+      rownames(t22)<-NULL
+      n<-nrow(t11)
+      str_vec <- vector()
+      for(i in 1:n){
+
+        x<-t11$value[i]
+        if(x>0)#considering only positive correlations
+        {
+          v1<-as.character(t11$Var1[i])
+          v2<-as.character(t11$Var2[i])
+          dt<-t22[(as.character(t22$Var1)==v1 & as.character(t22$Var2)==v2),]
+          if(as.numeric(dt$value)<0.05)
+          {
+            current_str = paste("The features <b>",v1, "-", v2 ,"</b>have a significant correlation value and can be used for feature selection")
+			      }
+          str_vec <- c(str_vec, current_str)
+        }
+      }
+cat("\n")
+cat("\n")
+      HTML(paste(str_vec, collapse = '<br/>'))
+  cat("\n")
+```
+
+
+$~$
+$~$
+$~$
+$~$
+<h1><u>Correlation Heat Map</u></h1>
+```{r, echo=FALSE}
+library(rmarkdown)
+library(shinyWidgets)
+library(Rtsne)
+library(ggplot2)
+library(irlba)
+library(plot3D)
+library(ggcorrplot)
+library(dplyr)
+
+f = c
+bp = correlation_heat_map(f)
+print(bp)
+```
+
+
+$~$
+$~$
+<h1><u>Target Variable Analysis</u></h1>
+```{r, echo=FALSE, results='asis', fig.keep='all', message = FALSE, warning = FALSE}
+x_1 = as.character(params$target1_param) 
+y_1 = as.character(params$target2_param)
+
+z = as.character(params$target_factor_param)
+
+if(params$target_factor_param =="None")
+{
+plot_ly(c,x=~get(params$target1_param),y=~get(params$target2_param),mode="markers",type="scatter")%>%layout(title="Plotly Scatter", xaxis = list(title=x_1), yaxis = list(title=y_1))
+}
+
+if(params$target_factor_param!="None")
+{
+ plot_ly(data = c, x = ~get(params$target1_param), y =~get(params$target2_param), color = ~get(params$target_factor_param), colors = "Set1")%>%layout(title="Plotly Scatter", xaxis = list(title=x_1), yaxis = list(title=y_1)) 
+}
+
+```
+
+
+$~$
+$~$
+<h1><u>tsne</u></h1>
+```{r echo=FALSE, fig.keep='all', message=FALSE, warning=FALSE, results='asis'}
+library(knitr)
+library(ggplot2)
+p = as.integer(params$tsne_perplexity)
+x = as.character(params$tsne_param)
+df2 = c
+str_vec = vector()
+
+      if(x =="")
+        return()
+      if(x!="")
+      {
+         data_matrix1 = prepare_data(df2, x)
+            if(p<(nrow(data_matrix)-1)/3)
+            {
+              tsne_output = TSNE(df2, data_matrix1,x, p)
+              print(tsne_output[[1]])
+             iter_no = tsne_output[[2]]
+              current_str = paste0("The stable configuration is achieved at iteration ", iter_no,"</br>")
+              
+              str_vec = c(str_vec, current_str)
+              current_str = paste0("The data points that are closer together can be assumed to have few features in common.As these are the points closer together in higher dimensions.")
+              str_vec = c(str_vec, current_str)
+              
+              }
+
+            else
+            {
+              max<-(nrow(data_matrix1)-1)/3
+              current_str = paste0("Choose a perplexity value between 1 and",max)
+              str_vec = c(str_vec, current_str)
+            }
+            HTML(paste(str_vec, collapse = '<br/>'))
+            
+      }
+
+```
+
+
+$~$
+$~$
+<h1><u>Encoded Matrix</u></h1>
+```{r, echo=FALSE}
+encoded_matrix = encoding(c)
+kable(encoded_matrix, caption = "One-Hot Encoding")%>%kable_styling(fixed_thead = T, bootstrap_options = c("striped", "hover", "condensed", "responsive"))%>% scroll_box(height = "300px", width = "100%")
+
+```
+
+
+$~$
+$~$
+<h1><u>VIF Values</u></h1>
+```{r, echo=FALSE, results='asis', fig.keep='all', message = FALSE, warning = FALSE}
+library(rmarkdown)
+library(shinyWidgets)
+library(Rtsne)
+library(ggplot2)
+library(irlba)
+library(plot3D)
+library(ggcorrplot)
+library(dplyr)
+library(car)
+library(ISLR)
+library(knitr)
+z = as.character(params$collinearity_param)
+cat("Selected variable: ",z)
+v1 = c
+v = v1[, sapply(v1, class) != "factor"]
+collinearity_output = detect_multicollinearity(v, z, 6)
+z1 = as.data.frame(collinearity_output[[1]])
+  kable(z1)%>%kable_styling(fixed_thead = T, bootstrap_options = c("striped", "hover", "condensed", "responsive"))%>% scroll_box(height = "200px", width = "100%") 
+  
+```
+
+$~$
+$~$
+<h1><u>Drop Variables</u></h1>
+```{r, echo=FALSE, results='asis', fig.keep='all', message = FALSE, warning = FALSE}
+library(rmarkdown)
+library(shinyWidgets)
+library(Rtsne)
+library(ggplot2)
+library(irlba)
+library(plot3D)
+library(ggcorrplot)
+library(dplyr)
+library(car)
+library(ISLR)
+library(knitr)
+z = as.character(params$collinearity_param)
+v = c
+v = v[,-1]
+z1 = as.data.frame(collinearity_output[[2]])
+  kable(z1)%>%kable_styling(fixed_thead = T, bootstrap_options = c("striped", "hover", "condensed", "responsive"))%>% scroll_box(height = "200px", width = "100%") 
+  
+```
+
+
+$~$
+$~$
+<h1><u>PCA Analysis</u></h1>
+$~$
+$~$
+<h3><u>PCA Loading Factor Tables </u></h3>
+```{r, echo=FALSE, results='asis', fig.keep='all', message = FALSE, warning = FALSE}
+library(knitr)
+library(kableExtra)
+pca_output = pca(c)
+z1 = pca_output[[1]]
+kable(z1)%>%kable_styling(fixed_thead = T, bootstrap_options = c("striped", "hover", "condensed", "responsive"))%>% scroll_box(height = "200px", width = "100%") 
+
+```
+
+$~$
+$~$
+<h3><u>PCA Eigen, Sd Value, Variance Values </u></h3>
+```{r, echo=FALSE, results='asis', fig.keep='all', message = FALSE, warning = FALSE}
+library(knitr)
+library(kableExtra)
+z2 = pca_output[[2]]
+kable(z2)%>%kable_styling(fixed_thead = T, bootstrap_options = c("striped", "hover", "condensed", "responsive"))%>% scroll_box(height = "200px", width = "100%") 
+```
+
+
+$~$
+$~$
+<h3><u>Visualization of Variances of Dimensions</u></h3>
+```{r, echo=FALSE, results='asis', fig.keep='all', message = FALSE, warning = FALSE}
+library(knitr)
+library(plotly)
+bp = pca_output[[3]]
+print(bp)
+```
+
+$~$
+$~$
+<h3><u>Individuals of same profile are on the same side of the plot</u></h3>
+```{r, echo=FALSE, results='asis', fig.keep='all', message = FALSE, warning = FALSE}
+library(knitr)
+library(plotly)
+bp = pca_output[[4]]
+bp
+```
+
