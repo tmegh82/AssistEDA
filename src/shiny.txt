@@ -1,0 +1,80 @@
+
+   #  output$tables <- renderUI({
+   #      lapply(1:length(tables_list), function(x) {
+   #        id <- paste0("dt", x)
+   #        output[[x]] <- DT::dataTableOutput(id)
+   #     })
+   # })
+   #
+   #  setTableOutput <- function(i) {
+   #    id <- paste0("dt", i)
+   #    output[[id]] <- DT::renderTable(tables_list[[i]])
+   #  }
+   #
+   #  for (i in range(1, length(tables_list))) {
+   #    setTableOutput(i)
+   #  }
+
+     # for (i in length(tables_list)) {
+     #   local({
+     #     i <- i
+     #     id <- names(tables_list)[i]
+     #     output[[id]] <- DT::renderDataTable(tables_list[[i]])
+     #   })
+     # }
+
+    #print(length(tables_list))
+
+#Method
+
+    # output$tables <- renderUI({
+    #   output_list <- list()
+    #   for(i in length(tables_list)){
+    #     output_list[[i]] <- DT::dataTableOutput(outputId=names(tables_list)[i])
+    #   }
+    #   #print(fluidRow(output_list))
+    #   return(fluidRow(output_list))
+    # })
+
+#Method1
+
+     # lapply(names(tables_list), function(x) {
+     #   output[[x]] = renderDataTable({tables_list[[x]]})
+     # })
+     #
+     #   output$tables <- renderUI({
+     #   lapply(names(tables_list), dataTableOutput)
+     # })
+
+    #print(output$tables)
+    #print(tables)
+     # for(i in range(1, length(tables)))
+     # {
+     #   stats_name = paste0("stats_", i)
+     #   output[[stats_name]] <- DT::renderDataTable(tables[[i]])
+     # }
+     #
+     #
+     # output$summary <- renderPrint({
+     #   summary(Data()$df)
+     # })
+
+#Method 2
+    # output$tables <- renderUI({
+    #
+    #   tableList <- imap(tables_list, ~ {
+    #     tagList(
+    #       h4(.y), # Note we can sprinkle in other UI elements
+    #       tableOutput(outputId = paste0("table_", .y))
+    #     )
+    #   })
+    #
+    #   tagList(tableList)
+    # })
+    #
+    # iwalk(tables_list, ~{
+    #   output_name <- paste0("table_", .y)
+    #   output[[output_name]] <- renderTable(.x)
+    # })
+    #
+    #
